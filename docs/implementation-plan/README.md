@@ -1,63 +1,207 @@
-# Implementation Plan: BTC Tap Trading Application
-
-**Architecture Version:** Hardened v1.3  
-**Timeline:** 2 Weeks (10 working days)  
-**Team:** 1 Senior Backend Engineer, 1 Senior Frontend Engineer
-
----
+# Backend Implementation Plan
 
 ## Overview
 
-This implementation plan translates the Hardened v1.3 architecture into actionable work items. Each task includes:
-- **Traceability:** Reference to source ADR or C4 Container
-- **Dependencies:** Prerequisites that must be completed first
-- **Definition of Done (DoD):** Clear acceptance criteria
-- **Owner:** Backend (BE) or Frontend (FE)
+This implementation plan translates the **BTC Tap Trading Application (Hardened v1.3)** architecture into an actionable, dependency-aware technical roadmap.
+
+**Architecture Reference:**
+- `prd.md` — Product requirements
+- `current_state.md` — Current system state (Hardened v1.3)
+- `docs/adr/` — 10 Accepted ADRs
+- `docs/diagrams/` — C4 Context and Container diagrams
 
 ---
 
-## Implementation Phases
+## Plan Structure
 
-| Phase | Duration | Focus | Output |
-|-------|----------|-------|--------|
-| [Phase 1: Foundation](./phase-1-foundation.md) | Days 1-3 | Infrastructure, CI/CD, database schema | Deployable skeleton |
-| [Phase 2: Skeleton](./phase-2-skeleton.md) | Days 4-5 | Thin-thread connectivity, auth, health checks | End-to-end "hello world" |
-| [Phase 3: Core Logic](./phase-3-core-logic.md) | Days 6-9 | Betting, resolution, archival | Feature-complete system |
-| [Phase 4: Hardening](./phase-4-hardening.md) | Day 10 | Testing, monitoring, documentation | Production-ready |
+This plan follows the **hybrid horizontal-vertical execution model**:
+
+### Phase 1: Foundation (Horizontal)
+**File:** [`01-phase-foundation.md`](./01-phase-foundation.md)
+
+Establish shared infrastructure and scaffolding:
+- VM provisioning and system setup
+- SQLite with WAL mode (ADR-001)
+- Redis configuration (ADR-004)
+- Go project scaffolding (ADR-002)
+- CI/CD and deployment scripts
+- Nginx reverse proxy
+- Observability baseline
+
+**Duration:** Days 1-2  
+**Dependencies:** None
 
 ---
 
-## Quick Reference: ADR to Implementation Mapping
+### Phase 2: Skeleton (Horizontal)
+**File:** [`02-phase-skeleton.md`](./02-phase-skeleton.md)
 
-| ADR | Key Implementation Tasks |
-|-----|-------------------------|
-| ADR-001 SQLite | Database schema, WAL config, backup scripts |
-| ADR-002 Go | Project scaffolding, module structure |
-| ADR-003 Single-VM | Systemd service files, deployment scripts |
-| ADR-004 Redis | Redis config, connection pooling, pub/sub |
-| ADR-005 Batching | BetBatcher component, channel logic |
-| ADR-006 Archival | Weekly archiver script, S3 integration |
-| ADR-007 Replay Protection | Signature validator, nonce middleware |
-| ADR-008 Circuit Breaker | Health monitor, CB middleware |
-| ADR-009 Conditional Deduction | SQL UPDATE with RETURNING, transaction mgmt |
-| ADR-010 Hybrid Ledger | Ledger table, audit queries, integrity check |
+Deploy minimal versions of all containers to validate connectivity:
+- Minimal API server with health endpoint
+- Minimal WebSocket server
+- Minimal price ingestion
+- Connectivity validation
+- systemd service definitions
+
+**Duration:** Days 2-3  
+**Dependencies:** Phase 1
+
+---
+
+### Phase 3: Vertical Modules (Iterative)
+
+Five independent vertical slices, prioritized by dependency order:
+
+| Order | Module | File | Duration | Dependencies |
+|-------|--------|------|----------|--------------|
+| 1 | Core Infrastructure | [`03-module-core-infrastructure.md`](./03-module-core-infrastructure.md) | Days 3-4 | Phase 2 |
+| 2 | Auth & Security | [`04-module-auth-security.md`](./04-module-auth-security.md) | Days 4-5 | Module 1 |
+| 3 | Bet Ingestion | [`05-module-bet-ingestion.md`](./05-module-bet-ingestion.md) | Days 5-7 | Modules 1, 2 |
+| 4 | Price Feed | [`06-module-price-feed.md`](./06-module-price-feed.md) | Days 7-8 | Module 1 |
+| 5 | Resolution & Archival | [`07-module-resolution-archival.md`](./07-module-resolution-archival.md) | Days 8-9 | Modules 1, 4 |
+
+---
+
+### Phase 4: System Hardening (Horizontal)
+**File:** [`08-phase-hardening.md`](./08-phase-hardening.md)
+
+Validate emergent system behavior and operational readiness:
+- End-to-end workflow testing
+- Load testing (3K RPS target)
+- Failure mode testing
+- Stress testing (spike and soak)
+- Operational readiness (metrics, alerts, runbooks)
+- Security validation
+
+**Duration:** Days 9-10  
+**Dependencies:** All Phase 3 modules
+
+---
+
+## ADR to Module Mapping
+
+| ADR | Title | Implemented In |
+|-----|-------|----------------|
+| 001 | SQLite as Primary Database | Phase 1, Module 1 |
+| 002 | Go as Backend Language | Phase 1 |
+| 003 | Monolithic Single-VM Deployment | Phase 1, 2, 4 |
+| 004 | Redis for Cache and Pub/Sub | Phase 1, Modules 1, 4 |
+| 005 | Write Batching for Bet Ingestion | Module 3 |
+| 006 | Archival Strategy for Bet History | Module 5 |
+| 007 | Replay Protection for Web3 Auth | Module 2 |
+| 008 | Stale Price Circuit Breaker | Module 4 |
+| 009 | Conditional Balance Deduction | Module 3 |
+| 010 | Hybrid Transaction Ledger | Module 3 |
+
+> **Note:** ADR-010 **extends** ADR-009 — both must be implemented together in the same transaction.
 
 ---
 
 ## Critical Path
 
 ```
-Day 1: VM Provision → Nginx → Redis → SQLite Schema
-Day 2: Go Project Scaffold → API Skeleton → DB Migrations
-Day 3: Web3 Auth → Signature Validator → Session Manager
-Day 4: Bet Batcher → Ledger Write → WebSocket Server
-Day 5: Price Ingestion → Health Monitor → Circuit Breaker
-Day 6: Grid UI → Bet Placement Flow
-Day 7: Bet Resolver → Resolution Logic
-Day 8: Weekly Archiver → S3 Upload → Integrity Checks
-Day 9: Frontend Hardening → Pending States → Reconnect Jitter
-Day 10: Load Testing → Monitoring → Documentation
+Phase 1 ──► Phase 2 ──► Module 1 ──► Module 2 ──► Module 3
+                          │                       ▲
+                          ▼                       │
+                        Module 4 ────────────────┘
+                          │
+                          ▼
+                        Module 5 ──► Phase 4
 ```
+
+**Critical Path:** Phase 1 → Phase 2 → Module 1 → Module 2 → Module 3 → Phase 4
+
+Modules 4 and 5 can be worked in parallel with Module 3 once Module 1 is complete.
+
+---
+
+## Task Summary
+
+| Phase/Module | Tasks | Est. Hours | Owner |
+|--------------|-------|------------|-------|
+| Phase 1: Foundation | 6 | 16 | Backend Engineer |
+| Phase 2: Skeleton | 5 | 12 | Backend Engineer |
+| Module 1: Core Infrastructure | 4 | 16 | Backend Engineer |
+| Module 2: Auth & Security | 5 | 17 | Backend Engineer |
+| Module 3: Bet Ingestion | 4 | 18 | Backend Engineer |
+| Module 4: Price Feed | 5 | 14 | Backend Engineer |
+| Module 5: Resolution & Archival | 4 | 14 | Backend Engineer |
+| Phase 4: System Hardening | 5 | 20 | Backend Engineer |
+| **Total** | **38** | **127** | |
+
+---
+
+## Key Implementation Notes
+
+### ADR-009 + ADR-010 Coordination
+The bet batcher must implement both conditional deduction AND hybrid ledger in the **same transaction**:
+
+```sql
+BEGIN;
+  -- ADR-009: Conditional deduction
+  UPDATE users SET balance = balance - ? WHERE id = ? AND balance >= ? RETURNING balance;
+  
+  -- ADR-010: Ledger entry
+  INSERT INTO transaction_ledger (user_id, amount, balance_after, ref_type, ref_id) VALUES (...);
+  
+  -- Bet record
+  INSERT INTO bets (...) VALUES (...);
+COMMIT;
+```
+
+### Configuration Values (from Hardening)
+
+| Parameter | Value | ADR |
+|-----------|-------|-----|
+| Nonce TTL | 90 seconds | ADR-007 (hardened) |
+| Circuit breaker enter | 10s stale | ADR-008 |
+| Circuit breaker recovery | 30s hysteresis | ADR-008 (hardened) |
+| Batch size | 100 bets | ADR-005 |
+| Batch timeout | 100ms | ADR-005 |
+| Redis maxmemory | 512MB | ADR-004 |
+
+### Testing Requirements
+
+Each module must include:
+- Unit tests for domain logic
+- Integration tests against real dependencies (SQLite, Redis)
+- Module exit criteria verification
+
+Phase 4 includes:
+- End-to-end workflow tests
+- 3K RPS load test
+- Failure mode tests
+- Security validation (replay, double-spend)
+
+---
+
+## Deliverables by Phase
+
+### Phase 1
+- [ ] Infrastructure provisioned
+- [ ] Database configured (WAL mode)
+- [ ] Redis running with persistence
+- [ ] Go project builds successfully
+- [ ] Nginx serving static files
+
+### Phase 2
+- [ ] All containers deployable via systemd
+- [ ] Health endpoints responding
+- [ ] Connectivity verified end-to-end
+
+### Phase 3
+- [ ] 5 modules with tests passing
+- [ ] Auth flow functional
+- [ ] Bet placement with batching
+- [ ] Price feed streaming
+- [ ] Resolution worker running
+
+### Phase 4
+- [ ] 3K RPS sustained
+- [ ] p99 latency < 100ms
+- [ ] All failure modes tested
+- [ ] Metrics and alerts operational
+- [ ] Runbooks documented
 
 ---
 
@@ -65,24 +209,22 @@ Day 10: Load Testing → Monitoring → Documentation
 
 | Risk | Mitigation |
 |------|------------|
-| SQLite performance at 3K RPS | Test batching early (Day 4), tune batch size |
-| Web3 integration complexity | Use tested libraries (go-ethereum, ethers.js) |
-| 2-week deadline | Parallel FE/BE work, thin-thread first |
-| Single point of failure | Document restore procedures, test backups |
+| SQLite contention at 3K RPS | Write batching (ADR-005), verified in Phase 4 |
+| Double-spend race condition | Conditional SQL update (ADR-009), tested in Module 3 |
+| Redis OOM | 90s nonce TTL (hardened), 512MB limit with LRU |
+| Disk exhaustion | Weekly archival (ADR-006), integrity check |
+| Stale price exploitation | Circuit breaker (ADR-008), 30s hysteresis |
 
 ---
 
-## Definition of Ready (DoR) per Task
+## Navigation
 
-- [ ] Clear acceptance criteria
-- [ ] No unresolved dependencies
-- [ ] ADR reference included
-- [ ] Estimated effort (hours)
-
-## Definition of Done (DoD) per Task
-
-- [ ] Code implemented
-- [ ] Unit tests pass (>80% coverage)
-- [ ] Integration tested
-- [ ] Documented (README/comments)
-- [ ] Code reviewed
+- [Overview](./00-overview.md)
+- [Phase 1: Foundation](./01-phase-foundation.md)
+- [Phase 2: Skeleton](./02-phase-skeleton.md)
+- [Module 1: Core Infrastructure](./03-module-core-infrastructure.md)
+- [Module 2: Auth & Security](./04-module-auth-security.md)
+- [Module 3: Bet Ingestion](./05-module-bet-ingestion.md)
+- [Module 4: Price Feed](./06-module-price-feed.md)
+- [Module 5: Resolution & Archival](./07-module-resolution-archival.md)
+- [Phase 4: System Hardening](./08-phase-hardening.md)
