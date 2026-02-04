@@ -119,7 +119,7 @@ Modules 4 and 5 can be worked in parallel with Module 3 once Module 1 is complet
 
 | Phase/Module | Tasks | Est. Hours | Owner |
 |--------------|-------|------------|-------|
-| Phase 1: Foundation | 6 | 16 | Backend Engineer |
+| Phase 1: Foundation | 7 | 20 | Backend Engineer |
 | Phase 2: Skeleton | 5 | 12 | Backend Engineer |
 | Module 1: Core Infrastructure | 4 | 16 | Backend Engineer |
 | Module 2: Auth & Security | 5 | 17 | Backend Engineer |
@@ -127,7 +127,7 @@ Modules 4 and 5 can be worked in parallel with Module 3 once Module 1 is complet
 | Module 4: Price Feed | 5 | 14 | Backend Engineer |
 | Module 5: Resolution & Archival | 4 | 14 | Backend Engineer |
 | Phase 4: System Hardening | 5 | 20 | Backend Engineer |
-| **Total** | **38** | **127** | |
+| **Total** | **40** | **131** | |
 
 ---
 
@@ -160,6 +160,16 @@ COMMIT;
 | Batch timeout | 100ms | ADR-005 |
 | Redis maxmemory | 512MB | ADR-004 |
 
+### CI/CD Quality Gates
+
+Per the architecture-to-implementation guidelines, all changes must pass:
+
+| Gate | Checks | Failure Action |
+|------|--------|----------------|
+| **Build Gate** | `gofmt`, `go vet`, `golangci-lint`, `gosec` on critical paths | Block merge |
+| **Test Gate** | Unit tests with race detector, 80% coverage on `pkg/batcher` and `pkg/auth` | Block merge |
+| **Artifact Versioning** | Semantic version (v1.2.3-build+sha), version endpoint | Block deploy |
+
 ### Testing Requirements
 
 Each module must include:
@@ -183,6 +193,7 @@ Phase 4 includes:
 - [ ] Redis running with persistence
 - [ ] Go project builds successfully
 - [ ] Nginx serving static files
+- [ ] **CI/CD pipeline with build gates, test gates, and artifact versioning**
 
 ### Phase 2
 - [ ] All containers deployable via systemd

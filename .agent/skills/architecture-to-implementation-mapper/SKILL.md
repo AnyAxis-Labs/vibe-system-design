@@ -72,7 +72,7 @@ Organize work using a hybrid execution strategy to minimize risk and maximize ea
 Establish shared, system-wide prerequisites.
 
 - Infrastructure provisioning
-- CI/CD pipelines
+- CI/CD pipelines with build gates, testing gates & artifact versioning
 - Identity, secrets, and configuration management
 - Observability baseline (logs, metrics, traces)
 - Shared libraries and platform services
